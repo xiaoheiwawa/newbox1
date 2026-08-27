@@ -149,7 +149,7 @@ var rule = {
             list.forEach(function (it) {
                 if (!it || !it.vod_id) return;
                 d.push({
-                    url: String(it.vod_id) + '/' + Number(it.vod_continu || 0),
+                    url: String(it.vod_id),
                     title: it.vod_name || '',
                     img: it.vod_pic || '',
                     desc: GZ.remarks(it, tid)
@@ -190,7 +190,9 @@ var rule = {
         VOD = {};
         try {
             if (!GZ.token) GZ.signUp();
-            let vid = String(input).split('/')[0];
+            let segs = String(input).split('?')[0].split('/');
+            let vid = '';
+            while (segs.length > 0 && !vid) vid = segs.pop();
             let t = String(Math.floor(Date.now() / 1000));
             let q = GZ.call('/App/IndexPlay/playInfo', { token_id: GZ.token_id, vod_id: vid, mobile_time: t, token: GZ.token });
             if (q && q.vodInfo) {
@@ -241,7 +243,7 @@ var rule = {
             data.list.forEach(function (it) {
                 if (!it || !it.vod_id) return;
                 d.push({
-                    url: String(it.vod_id) + '/' + Number(it.vod_continu || 0),
+                    url: String(it.vod_id),
                     title: it.vod_name || '',
                     img: it.vod_pic || '',
                     desc: GZ.remarks(it, it.t_id)
