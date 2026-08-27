@@ -46,6 +46,16 @@
       "filterable": 1
     },
     {
+      "key": "drpy_瓜子",
+      "name": "🍉瓜子|drpy",
+      "type": 3,
+      "api": "http://free178.cc.cd/tvbox/drpy2.min.js",
+      "ext": "http://free178.cc.cd/tvbox/guazi.js",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1
+    },
+    {
       "key": "AiNewGuanYing",
       "name": "💓‍观影┃4K💓‍",
       "type": 3,
