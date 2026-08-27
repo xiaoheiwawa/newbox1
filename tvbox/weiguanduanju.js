@@ -18,7 +18,7 @@ var rule = {
     filter: {},
     预处理: `js:
         globalThis.WG_POST = function (body) {
-            let html = request(rule.host + rule.url, {
+            let html = request(rule.url, {
                 method: 'POST',
                 body: JSON.stringify(body),
                 headers: Object.assign({}, rule.headers, { 'Content-Type': 'application/json' })
