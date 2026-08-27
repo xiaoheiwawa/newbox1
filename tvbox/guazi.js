@@ -3,7 +3,7 @@ var rule = {
     host: 'https://api.w32z7vtd.com',
     url: '/App/IndexList/indexList',
     searchUrl: '/App/Index/findMoreVod',
-    detailUrl: '/App/IndexPlay/playInfo',
+    detailUrl: 'fyid',
     searchable: 1,
     quickSearch: 1,
     filterable: 1,
