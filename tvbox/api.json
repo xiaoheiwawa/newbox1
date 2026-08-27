@@ -4,7 +4,7 @@
   "sites": [
     {
       "key": "Tg豆瓣",
-      "name": "豆瓣👉公众号【春秋导航】收集整理-🈲贩卖",
+      "name": "豆瓣",
       "type": 3,
       "api": "csp_TgYunDouBanPan",
       "searchable": 1,
@@ -17,36 +17,7 @@
         "filter": "https://gh-proxy.org/https://gh-proxy.com/raw.githubusercontent.com/yoursmile66/TVBox/main/json/douban.json"
       }
     },
-    {
-      "key": "弹幕",
-      "name": "Ⓜ️嗷呜弹幕设置",
-      "type": 3,
-      "api": "csp_AAConfigAmns",
-      "jar": "https://gh-proxy.org/https://raw.githubusercontent.com/child9527/tvbox/main/jars/弹幕.jar"
-    },
-    {
-      "key": "ConfigCenter",
-      "name": "🅿网盘配置中心",
-      "type": 3,
-      "api": "csp_ConfigCenter",
-      "searchable": 0,
-      "changeable": 0,
-      "ext": {
-        "commonConfig": "https://gh-proxy.org/https://gh-proxy.com/raw.githubusercontent.com/yoursmile66/TVBox/main/json/peizhi.json"
-      }
-    },
-    {
-      "key": "csp_LocalFile",
-      "name": "🏣本地文件",
-      "type": 3,
-      "api": "csp_LocalFile",
-      "searchable": 0,
-      "quickSearch": 0,
-      "filterable": 1,
-      "type_flag": 0
-    },
-    {
-      "key": "csp_GuaZi",
+    {  "key": "csp_GuaZi",
       "name": "🍉瓜子",
       "type": 3,
       "api": "csp_GuaZi",
@@ -1102,6 +1073,26 @@
       "type": 3,
       "api": "https://gh-proxy.org/https://raw.githubusercontent.com/child9527/tvbox/main/api/drpy2.min.js",
       "ext": "https://gh-proxy.org/https://raw.githubusercontent.com/child9527/tvbox/main/js/酷我听书.js"
+    },
+    {
+      "key": "drpy_荐片",
+      "name": "🧩荐片|drpy",
+      "type": 3,
+      "api": "http://free178.cc.cd/tvbox/drpy2.min.js",
+      "ext": "http://free178.cc.cd/tvbox/荐片.js",
+      "searchable": 1,
+      "quickSearch": 0,
+      "filterable": 1
+    },
+    {
+      "key": "drpy_围观短剧",
+      "name": "🎀围观短剧|drpy",
+      "type": 3,
+      "api": "http://free178.cc.cd/tvbox/drpy2.min.js",
+      "ext": "http://free178.cc.cd/tvbox/围观短剧.js",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1
     },
     {
       "key": "啊哈DJ",

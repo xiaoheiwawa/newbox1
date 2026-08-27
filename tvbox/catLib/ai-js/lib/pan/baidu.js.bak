@@ -1,0 +1,569 @@
+/**
+ * 百度网盘处理类 
+ * 提供分享链接解析、文件列表获取、播放链接生成功能
+ * 
+ * @module BaiduHandler
+ * @author 优雅
+ * @since 1.0.0
+ */
+
+import { Crypto as CryptoJS } from 'assets://js/lib/cat.js';
+
+// 全局调试开关
+let DEBUG = globalThis.baidu_debug || 0;
+// 站点名称
+let siteName = '百度';
+
+// ==================== 日志函数 ====================
+
+function log(level, tag, msg, startTime) {
+    if (DEBUG == 0) return;
+    if (DEBUG == 1 && level !== 4) return;
+    let prefix = ['🔍', '✅', '⚠️', '❌', '⚙️'][level] || '📝';
+    let timeStr = startTime !== undefined ? ` 耗时⏱️${Date.now() - startTime}ms` : '';
+    console.log(`${prefix}【${siteName}-${tag}】 ${msg}${timeStr}`);
+}
+
+// ==================== 批量并发请求工具 ====================
+
+async function batchFetch2(requests, timeout = 8000) {
+    if (!requests || requests.length === 0) return [];
+    let t1 = Date.now();
+    
+    const promises = requests.map(async (item) => {
+        try {
+            const url = typeof item === 'string' ? item : item.url;
+            const options = typeof item === 'string' 
+                ? { timeout: timeout }
+                : (item.options || { timeout: timeout });
+            const result = await req(url, options);
+            return result.content || result;
+        } catch (error) {
+            log(3, '批量请求', url + ': ' + error);
+            return null;
+        }
+    });
+    
+    const results = await Promise.all(promises);
+    log(0, '批量请求', requests.length + '个请求全部并发', Date.now() - t1);
+    return results;
+}
+
+function getBatchFn(requests) {
+    if (typeof batchFetch === 'function') {
+        return batchFetch(requests);
+    }
+    return batchFetch2(requests);
+}
+
+class BaiduHandler {
+    constructor() {
+        this.regex = /https:\/\/pan\.baidu\.com\/s\/([^?&#]+)(?:\?.*?pwd=([^&]+))?/;
+        this.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+            'Referer': 'https://pan.baidu.com/',
+            "Connection": "keep-alive",
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "zh,en-GB;q=0.9,en-US;q=0.8,en;q=0.7,zh-CN;q=0.6"
+        };
+        this.api = 'https://pan.baidu.com';
+        this.app_id = 250528;
+        this.view_mode = 1;
+        this.channel = 'chunlei';
+        this.type = ["M3U8_AUTO_4K", "M3U8_AUTO_2K", "M3U8_AUTO_1080", "M3U8_AUTO_720", "M3U8_AUTO_480"];
+        this._cookie = '';
+    }
+
+    get cookie() {
+        return this._cookie || globalThis.baidu_cookie || '';
+    }
+    
+    set cookie(value) {
+        this._cookie = value || '';
+        if (value) globalThis.baidu_cookie = value;
+    }
+
+    delay(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async request(url, options, retries = 2, requestType = '未知') {
+        const startTime = Date.now();
+        log(0, '请求', '【' + requestType + '】→ ' + url);
+        log(0, '请求', '【' + requestType + '】方法: ' + (options.method || 'GET'));
+        
+        if (options.data && DEBUG >= 2) {
+            log(0, '请求', '【' + requestType + '】请求体: ' + JSON.stringify(options.data).substring(0, 300));
+        }
+        
+        for (let i = 0; i <= retries; i++) {
+            try {
+                const response = await req(url, options);
+                log(0, '响应', '【' + requestType + '】状态码: ' + (response.status || response.code || '未知'));
+                
+                if (response.content) {
+                    try {
+                        const json = JSON.parse(response.content);
+                        if (DEBUG >= 2) {
+                            log(0, '响应', '【' + requestType + '】响应体: ' + JSON.stringify(json).substring(0, 300));
+                        }
+                        return json;
+                    } catch {
+                        return { content: response.content, status: response.status };
+                    }
+                }
+                return { status: response.status };
+            } catch (error) {
+                log(3, '错误', '【' + requestType + '】失败 (' + (i + 1) + '/' + (retries + 1) + '): ' + (error?.message || error));
+                if (i === retries) {
+                    return { error: true, code: -1, message: '请求失败: ' + (error?.message || '未知错误') };
+                }
+                await this.delay(100);
+            }
+        }
+    }
+
+    formatFileSize(bytes) {
+        if (!bytes) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        let i = 0;
+        let size = bytes;
+        while (size >= 1024 && i < units.length - 1) {
+            size /= 1024;
+            i++;
+        }
+        return size.toFixed(2) + ' ' + units[i];
+    }
+
+    objectToQuery(obj) {
+        return Object.entries(obj)
+            .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+            .join('&');
+    }
+
+    getShareData(url) {
+        const matches = this.regex.exec(url);
+        if (!matches || !matches[1]) return null;
+        return { surl: matches[1], pwd: matches[2] || '' };
+    }
+    
+    /**
+     * 获取随机密钥(randsk)并返回独立Cookie
+     * 不需要用户Cookie，通过分享链接和密码自动获取
+     */
+    async getRandsk(shareData) {
+        const shorturl = shareData.surl.replace(/^1+/, '');
+        const timestamp = Date.now();
+        const baseCookie = this.cookie;
+        const verUrl = `${this.api}/share/verify?t=${timestamp}&surl=${shorturl}`;
+        const formData = { pwd: shareData.pwd || '' };
+        
+        log(0, 'Randsk', '请求URL: ' + verUrl);
+        log(0, 'Randsk', 'POST数据: ' + JSON.stringify(formData));
+        
+        try {
+            const response = await req(verUrl, {
+                method: 'POST',
+                headers: {
+                    ...this.headers,
+                    'Cookie': baseCookie,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                data: formData,
+                postType: 'form'
+            });
+            
+            log(0, 'Randsk', '响应状态: ' + (response.status || response.code || 'unknown'));
+            
+            let result;
+            if (response.content) {
+                try {
+                    result = JSON.parse(response.content);
+                    log(0, 'Randsk', '响应内容: ' + JSON.stringify(result));
+                } catch (e) {
+                    log(3, 'Randsk', 'JSON解析失败: ' + e.message);
+                    return null;
+                }
+            } else {
+                log(3, 'Randsk', '无响应内容');
+                return null;
+            }
+            
+            if (!result.error && result.errno === 0 && result.randsk) {
+                const randsk = result.randsk;
+                const BDCLND = `BDCLND=${randsk}`;
+                
+                let independentCookie;
+                if (!baseCookie.includes('BDCLND')) {
+                    independentCookie = baseCookie + (baseCookie ? '; ' : '') + BDCLND;
+                } else {
+                    independentCookie = baseCookie.replace(/BDCLND=[^;]+/, BDCLND);
+                }
+                
+                log(1, 'Randsk', '获取randsk成功: ' + randsk);
+                return { randsk, cookie: independentCookie };
+            } else {
+                log(3, 'Randsk', '验证失败: errno=' + result.errno + ', err_msg=' + (result.err_msg || '未知错误'));
+                return null;
+            }
+        } catch (error) {
+            log(3, 'Randsk', '请求异常: ' + (error?.message || error));
+            return null;
+        }
+    }
+
+    /**
+     * 获取分享文件列表
+     */
+    async getShareList(shareData) {
+        const shorturl = shareData.surl.replace(/^1+/, '');
+        const randskResult = await this.getRandsk(shareData);
+        if (!randskResult) return null;
+        
+        const headers = { ...this.headers, 'Cookie': randskResult.cookie };
+        
+        const listUrl = `${this.api}/share/list?` + this.objectToQuery({
+            web: 5,
+            app_id: this.app_id,
+            desc: 1,
+            showempty: 0,
+            page: 1,
+            num: 100,
+            order: 'time',
+            shorturl: shorturl,
+            root: 1,
+            view_mode: this.view_mode,
+            channel: this.channel,
+            clienttype: 0
+        });
+        
+        const listResult = await this.request(listUrl, {
+            method: 'GET',
+            headers: headers
+        }, 3, '获取分享列表');
+        
+        if (listResult.error || listResult.errno !== 0) {
+            log(3, '分享列表', '获取失败: errno=' + listResult.errno);
+            return null;
+        }
+        
+        log(0, '分享列表', '获取成功，共 ' + (listResult.list?.length || 0) + ' 个文件/目录');
+        return {
+            list: listResult.list,
+            uk: listResult.uk,
+            shareid: listResult.share_id,
+            title: listResult.title,
+            cookie: randskResult.cookie
+        };
+    }
+
+    extractVideoInfo(item, shareInfo, shareData) {
+        const fileName = item.server_filename || item.path.split('/').pop();
+        let thumbnail = '';
+        if (item.thumbs) {
+            thumbnail = item.thumbs.url || item.thumbs.icon || '';
+        } else if (item.icon) {
+            thumbnail = item.icon;
+        }
+        return {
+            name: fileName,
+            path: item.path.replaceAll('#', '\0'),
+            uk: shareInfo.uk,
+            shareid: shareInfo.shareid,
+            fsid: item.fs_id || item.fsid,
+            surl: shareData.surl,
+            size: item.size,
+            thumbnail: thumbnail
+        };
+    }
+
+    // ==================== 并发获取文件列表（不需要用户Cookie） ====================
+
+    /**
+     * 获取分享中的视频文件列表 - 并发优化版
+     * 通过 randsk 自动认证，不需要用户配置 Cookie
+     * @param {Object} shareData - 分享数据，包含surl和pwd
+     * @param {number} maxDepth - 最大遍历深度（默认5层）
+     * @returns {Array} 视频文件列表
+     */
+    async getFilesByShareUrl(shareData, maxDepth = 5) {
+        const startTime = Date.now();
+        log(0, '文件列表', '开始获取 (最大深度: ' + maxDepth + ')');
+        
+        if (!shareData || !shareData.surl) {
+            log(3, '文件列表', '分享数据无效');
+            return [];
+        }
+        
+        // 获取 randsk 用于后续所有请求（只需要一次）
+        const randskResult = await this.getRandsk(shareData);
+        if (!randskResult) {
+            log(3, '文件列表', '获取randsk失败');
+            return [];
+        }
+        const cookie = randskResult.cookie;
+        
+        // 获取根目录列表
+        const shorturl = shareData.surl.replace(/^1+/, '');
+        const listUrl = `${this.api}/share/list?` + this.objectToQuery({
+            web: 5,
+            app_id: this.app_id,
+            desc: 1,
+            showempty: 0,
+            page: 1,
+            num: 100,
+            order: 'time',
+            shorturl: shorturl,
+            root: 1,
+            view_mode: this.view_mode,
+            channel: this.channel,
+            clienttype: 0
+        });
+        
+        const listResult = await this.request(listUrl, {
+            method: 'GET',
+            headers: { ...this.headers, 'Cookie': cookie }
+        }, 3, '获取分享列表');
+        
+        if (listResult.error || listResult.errno !== 0) {
+            log(3, '文件列表', '获取分享列表失败: errno=' + listResult.errno);
+            return [];
+        }
+        
+        const shareInfo = {
+            uk: listResult.uk,
+            shareid: listResult.share_id
+        };
+        
+        const videos = [];
+        
+        const processItems = (items) => {
+            for (const item of items) {
+                if (item.category === '1' || item.category === 1) {
+                    videos.push(this.extractVideoInfo(item, shareInfo, shareData));
+                }
+            }
+        };
+        
+        /**
+         * 使用 getBatchFn 并发获取指定层级的子目录
+         */
+        const fetchLevel = async (dirs, currentDepth) => {
+            if (currentDepth >= maxDepth || dirs.length === 0) return [];
+            
+            // 构建所有子目录的请求（携带 Cookie）
+            const requests = dirs.map(path => {
+                const url = `${this.api}/share/list?` + this.objectToQuery({
+                    is_from_web: true,
+                    uk: shareInfo.uk,
+                    shareid: shareInfo.shareid,
+                    order: 'name',
+                    desc: 0,
+                    showempty: 0,
+                    view_mode: this.view_mode,
+                    page: 1,
+                    num: 100,
+                    dir: path,
+                    channel: this.channel,
+                    app_id: this.app_id
+                });
+                return { 
+                    url, 
+                    options: { 
+                        method: 'GET',
+                        headers: { ...this.headers, 'Cookie': cookie }
+                    } 
+                };
+            });
+            
+            log(0, '并发获取', '第' + currentDepth + '层，' + requests.length + '个目录');
+            const results = await getBatchFn(requests);
+            
+            const allItems = [];
+            const nextLevelDirs = [];
+            
+            for (const result of results) {
+                if (result) {
+                    try {
+                        const json = typeof result === 'string' ? JSON.parse(result) : result;
+                        if (json.errno === 0 && json.list) {
+                            for (const item of json.list) {
+                                // 收集下一层的子目录
+                                if (item.category === '6' || item.category === 6) {
+                                    if (currentDepth + 1 < maxDepth) {
+                                        nextLevelDirs.push(item.path);
+                                    }
+                                }
+                                // 收集视频文件
+                                if (item.category === '1' || item.category === 1) {
+                                    allItems.push(item);
+                                }
+                            }
+                        }
+                    } catch (e) {}
+                }
+            }
+            
+            // 处理当前层的文件
+            processItems(allItems);
+            
+            // 如果有下一层，继续并发获取
+            if (nextLevelDirs.length > 0 && currentDepth + 1 < maxDepth) {
+                await fetchLevel(nextLevelDirs, currentDepth + 1);
+            }
+            return allItems;
+        };
+        
+        // 处理根目录
+        const rootItems = listResult.list || [];
+        const rootDirs = [];
+        for (const item of rootItems) {
+            if (item.category === '6' || item.category === 6) {
+                if (maxDepth > 0) rootDirs.push(item.path);
+            }
+            if (item.category === '1' || item.category === 1) {
+                videos.push(this.extractVideoInfo(item, shareInfo, shareData));
+            }
+        }
+        
+        // 使用 getBatchFn 并发获取所有子目录
+        if (rootDirs.length > 0) {
+            await fetchLevel(rootDirs, 1);
+        }
+        
+        // 按集数排序
+        videos.sort((a, b) => {
+            const numA = parseInt((a.name || '').replace(/[^\d]/g, '')) || 0;
+            const numB = parseInt((b.name || '').replace(/[^\d]/g, '')) || 0;
+            return numA - numB;
+        });
+        
+        log(0, '文件列表', '找到 ' + videos.length + ' 个视频 (遍历深度: ' + maxDepth + ')', startTime);
+        return videos;
+    }
+
+    /**
+     * 获取用户UID（需要用户Cookie）
+     */
+    async getUid() {
+        const headers = { ...this.headers, 'Cookie': this.cookie };
+        log(0, 'UID', '获取用户UID...');
+        const result = await this.request('https://mbd.baidu.com/userx/v1/info/get?appname=baiduboxapp&fields=%20%20%20%20%20%20%20%20%5B%22bg_image%22,%22member%22,%22uid%22,%22avatar%22,%20%22avatar_member%22%5D&client&clientfrom&lang=zh-cn&tpl&ttt', {
+            method: 'GET',
+            headers: headers
+        }, 3, '获取用户UID');
+        const uid = result.data?.fields?.uid || result.data?.uid || result.uid || '';
+        log(0, 'UID', '获取成功: ' + uid);
+        return uid;
+    }
+
+    sha1(message) {
+        return CryptoJS.SHA1(message).toString(CryptoJS.enc.Hex);
+    }
+
+    /**
+     * 获取签名（需要用户Cookie）
+     */
+    async getSign(shareData) {
+        const url = `${this.api}/share/tplconfig?surl=${shareData.surl}&fields=Espace_info,card_info,sign,timestamp&view_mode=${this.view_mode}&channel=${this.channel}&web=1&app_id=${this.app_id}`;
+        const headers = { ...this.headers, 'Cookie': this.cookie };
+        const data = await this.request(url, { headers }, 3, '获取签名');
+        
+        if (data.error || data.errno !== 0 || !data.data) {
+            log(3, '签名', '获取失败');
+            return null;
+        }
+        log(0, '签名', '获取成功');
+        return data.data.sign;
+    }
+
+    /**
+     * 获取文件的直链地址（App版，需要用户Cookie）
+     */
+    async getAppShareUrl(path, uk, shareid, fsid, shareData) {
+        path = path.replaceAll('\0', '#');
+        log(0, 'App直链', '获取直链: ' + path);
+        
+        const randskResult = await this.getRandsk(shareData);
+        if (!randskResult) {
+            log(3, 'App直链', '获取randsk失败');
+            return null;
+        }
+        
+        const uid = await this.getUid();
+        if (!uid) {
+            log(3, 'App直链', '获取UID失败');
+            return null;
+        }
+
+        const headers = { 
+            ...this.headers, 
+            'Cookie': randskResult.cookie,
+            "User-Agent": 'netdisk;P2SP;2.2.91.136;android-android;'
+        };
+        
+        const devuid = "73CED981D0F186D12BC18CAE1684FFD5|VSRCQTF6W";
+        const time = String(Date.now());
+
+        const bdussMatch = randskResult.cookie.match(/BDUSS=(.+?);/);
+        if (!bdussMatch) {
+            log(3, 'App直链', '未找到BDUSS');
+            return null;
+        }
+        
+        const BDUSS = bdussMatch[1];
+        const rand = this.sha1(
+            this.sha1(BDUSS) + 
+            uid + 
+            "ebrcUYiuxaZv2XGu7KIYKxUrqfnOfpDF" + 
+            time + 
+            devuid + 
+            "11.30.2ae5821440fab5e1a61a025f014bd8972"
+        );
+
+        const url = this.api + "/share/list?" + this.objectToQuery({
+            shareid, uk, fid: fsid, sekey: randskResult.randsk,
+            origin: 'dlna', devuid, clienttype: 1,
+            channel: 'android_12_zhao_bd-netdisk_1024266h',
+            version: '11.30.2', time, rand
+        });
+        
+        const result = await this.request(url, {
+            method: "GET",
+            headers: headers
+        }, 3, '获取App直链');
+        
+        if (result.error || result.errno !== 0 || !result.list?.length) {
+            log(3, 'App直链', '获取失败');
+            return null;
+        }
+        log(1, 'App直链', '获取成功');
+        return result.list[0].dlink;
+    }
+
+    /**
+     * 获取Web版播放链接（需要用户Cookie）
+     */
+    async getWebPlayUrls(path, uk, shareid, fsid, shareData) {
+        path = path.replace(/\0/g, '#');
+        const sign = await this.getSign(shareData);
+        if (!sign) {
+            log(3, 'Web播放', '获取签名失败');
+            return [];
+        }
+        
+        const timestamp = Math.floor(Date.now() / 1000);
+        const urls = [];
+        
+        this.type.forEach(type => {
+            const name = type.replace('M3U8_AUTO_', '');
+            const url = `${this.api}/share/streaming?channel=${this.channel}&uk=${uk}&fid=${fsid}&sign=${sign}&timestamp=${timestamp}&shareid=${shareid}&type=${type}&vip=0&jsToken&isplayer=1&check_blue=1&adToken`;
+            urls.push({ name: name, url: url });
+        });
+        
+        log(0, 'Web播放', '生成 ' + urls.length + ' 个画质链接');
+        return urls;
+    }
+}
+
+export const Baidu = new BaiduHandler();
