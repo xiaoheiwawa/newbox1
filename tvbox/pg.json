@@ -1,0 +1,259 @@
+{
+  "spider": "http://free178.cc.cd/tvbox/ok.jar;md5;386645178af8dbef4294bfde7db452f7",
+  "sites": [
+    {
+      "key": "Douban",
+      "name": "🐮【pg】豆瓣",
+      "type": 3,
+      "api": "csp_Douban",
+      "searchable": 0,
+      "quickSearch": 0,
+      "filterable": 1,
+      "changeable": 0
+    },
+    {
+      "key": "drpy_荐片",
+      "name": "🧩荐片|drpy",
+      "type": 3,
+      "api": "http://free178.cc.cd/tvbox/drpy2.min.js",
+      "ext": "http://free178.cc.cd/tvbox/jianpian.js",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1
+    },
+    {
+      "key": "Nangua",
+      "name": "🎃南瓜",
+      "type": 3,
+      "api": "csp_Nangua",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1
+    },
+    {
+      "key": "Iqiyi",
+      "name": "📯爱奇艺",
+      "type": 3,
+      "api": "csp_Iqiyi",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1,
+      "changeable": 0
+    },
+    {
+      "key": "VodQQ",
+      "name": "🐧腾讯",
+      "type": 3,
+      "api": "csp_QQ",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1,
+      "changeable": 0
+    },
+    {
+      "key": "YouKu",
+      "name": "🎅优酷",
+      "type": 3,
+      "api": "csp_YouKu",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1,
+      "changeable": 0
+    },
+    {
+      "key": "Mgtv",
+      "name": "🥭芒果",
+      "type": 3,
+      "api": "csp_Mgtv",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1,
+      "changeable": 0
+    },
+    {
+      "key": "Libvio",
+      "name": "🦌立播",
+      "type": 3,
+      "api": "csp_Libvio",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1
+    },
+    {
+      "key": "Kkys",
+      "name": "🦅看看",
+      "type": 3,
+      "api": "csp_Kkys",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1
+    },
+    {
+      "key": "Wcys",
+      "name": "🫐小城",
+      "type": 3,
+      "api": "csp_Wcys",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1
+    },
+    {
+      "key": "HanXiaoQuan",
+      "name": "🍙韩小圈",
+      "type": 3,
+      "api": "csp_HanXiaoQuan",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1
+    },
+    {
+      "key": "Dm84",
+      "name": "🌏动漫吧",
+      "type": 3,
+      "api": "csp_Dm84",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1,
+      "style": {
+        "type": "rect",
+        "ratio": 0.75
+      }
+    },
+    {
+      "key": "Hanime",
+      "name": "🍥哈尼美",
+      "type": 3,
+      "api": "csp_Hanime",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1,
+      "style": {
+        "type": "rect",
+        "ratio": 0.65
+      }
+    },
+    {
+      "key": "Bili",
+      "name": "🅱哔哩",
+      "type": 3,
+      "api": "csp_Bili",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1,
+      "changeable": 0,
+      "style": {
+        "type": "rect",
+        "ratio": 1.433
+      }
+    },
+    {
+      "key": "BiliBangumi",
+      "name": "🅲哔哩影视",
+      "type": 3,
+      "api": "csp_BiliBangumi",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1,
+      "changeable": 0,
+      "style": {
+        "type": "rect",
+        "ratio": 1.433
+      }
+    },
+    {
+      "key": "Ikanbot",
+      "name": "🅸爱看采集",
+      "type": 3,
+      "api": "csp_Ikanbot",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 0
+    },
+    {
+      "key": "Duanju",
+      "name": "🍉短剧",
+      "type": 3,
+      "api": "csp_Duanju",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1,
+      "style": {
+        "type": "rect",
+        "ratio": 2
+      }
+    },
+    {
+      "key": "JustLive",
+      "name": "📺Just直播",
+      "type": 3,
+      "api": "csp_JustLive",
+      "searchable": 1,
+      "changeable": 0
+    },
+    {
+      "key": "KsLive",
+      "name": "📱快手直播",
+      "type": 3,
+      "api": "csp_KsLive",
+      "searchable": 1,
+      "changeable": 0
+    },
+    {
+      "key": "Kanqiu",
+      "name": "🌐看球体育",
+      "type": 3,
+      "api": "csp_Kanqiu",
+      "searchable": 1,
+      "changeable": 0,
+      "style": {
+        "type": "list"
+      }
+    },
+    {
+      "key": "Kugou",
+      "name": "🎧酷狗音乐",
+      "type": 3,
+      "api": "csp_Kugou",
+      "searchable": 1,
+      "changeable": 0,
+      "style": {
+        "type": "rect",
+        "ratio": 1.0
+      }
+    },
+    {
+      "key": "push_agent",
+      "name": "🄵推送",
+      "type": 3,
+      "api": "csp_Push",
+      "searchable": 0,
+      "changeable": 0
+    }
+  ],
+  "lives": [
+    {
+      "name": "综合直播",
+      "type": 0,
+      "playerType": 2,
+      "url": "http://free178.cc.cd/tvbox/live.txt"
+    }
+  ],
+  "parses": [],
+  "rules": [
+    {
+      "name": "proxy",
+      "hosts": [
+        "raw.githubusercontent.com",
+        "googlevideo.com",
+        "youtube.com",
+        ".*boku.*",
+        ".*nivod.*",
+        ".*ulivetv.*"
+      ]
+    }
+  ],
+  "ads": [
+    "simpleperf",
+    "click.hshxm.com"
+  ]
+}
