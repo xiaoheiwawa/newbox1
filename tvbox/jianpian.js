@@ -2,7 +2,7 @@ var rule = {
     title: '荐片',
     host: 'https://api.ztcgi.com',
     homeUrl: '/api/v2/settings/homeCategory',
-    url: '/api/crumb/list?fcate_pid=fyclass&category_id=&page=fypage',
+    url: '/api/crumb/list?fcate_pid=fyclass&category_id=&page=fypage&area=&year=&type=&sort=',
     detailUrl: '/api/video/detailv2?id=fyid',
     searchUrl: '/api/v2/search/videoV2?key=**&category_id=88&page=fypage&pageSize=20',
     searchable: 1,
@@ -111,7 +111,7 @@ var rule = {
         let d = [];
         try {
             let url = String(MY_CATE) === '99'
-                ? rule.host + '/api/dyTag/tpl2_data?id=70&page=' + MY_PAGE
+                ? rule.host + '/api/dyTag/tpl2_data?id=70&page=' + MY_PAGE + '&area=&year=&type='
                 : input;
             let data = JSON.parse(request(url, { headers: rule.headers }));
             if (data && Array.isArray(data.data)) d = JP_MAP(data.data)
